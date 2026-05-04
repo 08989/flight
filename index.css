@@ -1,0 +1,209 @@
+import React from 'react';
+import { AppTheme, ThemeConfig, themes } from '../utils/theme';
+import { audioManager } from '../utils/audio';
+import { X, Volume2, VolumeX, Moon, Sun, Palette, Music, RefreshCw } from 'lucide-react';
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  activeTheme: AppTheme;
+  onChangeTheme: (t: AppTheme) => void;
+  isDark: boolean;
+  onToggleDark: (d: boolean) => void;
+  soundMuted: boolean;
+  onToggleSoundMuted: (m: boolean) => void;
+  songEnabled: boolean;
+  onToggleSongEnabled: (s: boolean) => void;
+  currentSongIndex: number;
+  onSelectSong: (s: number) => void;
+}
+
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+  activeTheme,
+  onChangeTheme,
+  isDark,
+  onToggleDark,
+  soundMuted,
+  onToggleSoundMuted,
+  songEnabled,
+  onToggleSongEnabled,
+  currentSongIndex,
+  onSelectSong
+}) => {
+  if (!isOpen) return null;
+
+  const songsList = audioManager.getSongs();
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-slate-800/50 shadow-2xl relative select-none flex flex-col justify-between max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center pb-4 border-b border-slate-200/50 dark:border-slate-800/50 mb-4 select-none">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
+              <Palette className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-800 dark:text-slate-100">
+                Application Controls & Customization
+              </h3>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                Manage your UI dark mode, musical ambiance, and palette preferences.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Setting options */}
+        <div className="flex flex-col gap-5">
+          {/* Sounds and effects */}
+          <div className="flex flex-col gap-3">
+            <label className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5" /> Audio Toggles
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => onToggleSoundMuted(!soundMuted)}
+                className={`p-3 border rounded-xl flex items-center justify-between text-xs font-bold transition cursor-pointer active:scale-95 ${
+                  soundMuted
+                    ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400'
+                    : 'border-blue-400/50 bg-blue-50/40 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  {soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  Interface Sounds
+                </span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {soundMuted ? 'Muted' : 'On'}
+                </span>
+              </button>
+
+              <button
+                onClick={() => onToggleSongEnabled(!songEnabled)}
+                className={`p-3 border rounded-xl flex items-center justify-between text-xs font-bold transition cursor-pointer active:scale-95 ${
+                  !songEnabled
+                    ? 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400'
+                    : 'border-blue-400/50 bg-blue-50/40 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Music className="w-4 h-4" /> Loop Music
+                </span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {songEnabled ? 'On' : 'Off'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Background Songs Choice */}
+          {songEnabled && (
+            <div className="flex flex-col gap-2.5">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                <Music className="w-3.5 h-3.5" /> Background Audio Theme Loop (At least 5 tracks)
+              </label>
+              <div className="flex flex-col gap-1.5">
+                {songsList.map((song) => (
+                  <button
+                    key={song.id}
+                    onClick={() => onSelectSong(song.id)}
+                    className={`p-2.5 border rounded-xl text-left text-xs font-bold transition flex items-center justify-between cursor-pointer select-none active:scale-[0.98] ${
+                      currentSongIndex === song.id
+                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    <span>{song.id + 1}. {song.name}</span>
+                    {currentSongIndex === song.id && <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Darkmode Toggle */}
+          <div className="flex flex-col gap-3">
+            <label className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Moon className="w-3.5 h-3.5" /> View Mode / Dark Mode
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => onToggleDark(false)}
+                className={`p-3 border rounded-xl flex items-center justify-between text-xs font-bold transition cursor-pointer active:scale-95 ${
+                  !isDark
+                    ? 'border-indigo-400/50 bg-indigo-50/40 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-extrabold'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Sun className="w-4 h-4" /> Light Mode
+                </span>
+              </button>
+              <button
+                onClick={() => onToggleDark(true)}
+                className={`p-3 border rounded-xl flex items-center justify-between text-xs font-bold transition cursor-pointer active:scale-95 ${
+                  isDark
+                    ? 'border-indigo-400/50 bg-indigo-50/40 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-extrabold'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-400'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Moon className="w-4 h-4" /> Dark Mode
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Color/Theme Toggles */}
+          <div className="flex flex-col gap-3">
+            <label className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Palette className="w-3.5 h-3.5" /> Core Accent Colors & Palette Themes (At least 5)
+            </label>
+            <div className="grid grid-cols-1 gap-2">
+              {themes.map((t: ThemeConfig) => (
+                <button
+                  key={t.id}
+                  onClick={() => onChangeTheme(t.id)}
+                  className={`p-3 border rounded-xl text-left text-xs font-bold transition cursor-pointer select-none flex items-center justify-between active:scale-[0.98] ${
+                    activeTheme === t.id
+                      ? 'border-indigo-500 bg-indigo-50/40 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300'
+                      : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className={`w-4 h-4 rounded-full ${t.bgClass} border border-slate-300 dark:border-slate-700`}></span>
+                    {t.name}
+                  </span>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center border font-black ${
+                    activeTheme === t.id ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 dark:border-slate-700'
+                  }`}>
+                    {activeTheme === t.id ? '✓' : ''}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-5 border-t border-slate-100 dark:border-slate-800/60 pt-3 text-right">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs tracking-wider rounded-xl cursor-pointer active:scale-95 transition shadow-sm"
+          >
+            Complete Configuration
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

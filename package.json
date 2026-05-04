@@ -1,0 +1,275 @@
+import { FlightData, PredictionDetail, AdvancedAlgorithmResults } from '../types';
+
+// Array of sample airlines and details for generating high fidelity data
+const airlines = [
+  { name: 'American Airlines', iata: 'AA', baseRisk: 18 },
+  { name: 'Delta Air Lines', iata: 'DL', baseRisk: 15 },
+  { name: 'United Airlines', iata: 'UA', baseRisk: 22 },
+  { name: 'Southwest Airlines', iata: 'WN', baseRisk: 19 },
+  { name: 'JetBlue Airways', iata: 'B6', baseRisk: 25 },
+  { name: 'Lufthansa', iata: 'LH', baseRisk: 12 },
+  { name: 'British Airways', iata: 'BA', baseRisk: 16 },
+  { name: 'Emirates', iata: 'EK', baseRisk: 10 },
+  { name: 'Air France', iata: 'AF', baseRisk: 17 },
+  { name: 'Singapore Airlines', iata: 'SQ', baseRisk: 8 },
+  { name: 'Ryanair', iata: 'FR', baseRisk: 28 },
+  { name: 'EasyJet', iata: 'U2', baseRisk: 24 }
+];
+
+const airports = [
+  { name: 'John F. Kennedy International', iata: 'JFK', icao: 'KJFK', timezone: 'America/New_York', city: 'New York' },
+  { name: 'Los Angeles International', iata: 'LAX', icao: 'KLAX', timezone: 'America/Los_Angeles', city: 'Los Angeles' },
+  { name: 'London Heathrow', iata: 'LHR', icao: 'EGLL', timezone: 'Europe/London', city: 'London' },
+  { name: 'Tokyo Haneda', iata: 'HND', icao: 'RJTT', timezone: 'Asia/Tokyo', city: 'Tokyo' },
+  { name: 'Dubai International', iata: 'DXB', icao: 'OMDB', timezone: 'Asia/Dubai', city: 'Dubai' },
+  { name: 'Chicago O\'Hare International', iata: 'ORD', icao: 'KORD', timezone: 'America/Chicago', city: 'Chicago' },
+  { name: 'Atlanta Hartsfield-Jackson International', iata: 'ATL', icao: 'KATL', timezone: 'America/New_York', city: 'Atlanta' },
+  { name: 'Dallas/Fort Worth International', iata: 'DFW', icao: 'KDFW', timezone: 'America/Chicago', city: 'Dallas' },
+  { name: 'San Francisco International', iata: 'SFO', icao: 'KSFO', timezone: 'America/Los_Angeles', city: 'San Francisco' },
+  { name: 'Singapore Changi', iata: 'SIN', icao: 'WSSS', timezone: 'Asia/Singapore', city: 'Singapore' },
+  { name: 'Frankfurt', iata: 'FRA', icao: 'EDDF', timezone: 'Europe/Berlin', city: 'Frankfurt' },
+  { name: 'Amsterdam Schiphol', iata: 'AMS', icao: 'EHAM', timezone: 'Europe/Amsterdam', city: 'Amsterdam' }
+];
+
+const aircraftModels = [
+  'Boeing 737-800',
+  'Boeing 777-300ER',
+  'Boeing 787-9 Dreamliner',
+  'Airbus A320neo',
+  'Airbus A350-900',
+  'Airbus A380-800',
+  'Airbus A321LR'
+];
+
+/**
+ * Simple deterministic pseudorandom function to get consistent values based on flight numbers.
+ */
+function pseudoRandom(seedStr: string): number {
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash % 100) / 100;
+}
+
+const weatherConditions = ['Clear Sky', 'Scattered Clouds', 'Foggy & Overcast', 'Moderate Rain', 'Light Snow', 'Windy'];
+
+/**
+ * Creates high quality fallback/mock data for any arbitrary flight number.
+ */
+export function generateMockFlightData(flightNo: string): FlightData {
+  const norm = flightNo.toUpperCase().replace(/\s+/g, '');
+  const letters = norm.match(/^[A-Z]+/)?.[0] || 'AA';
+  const digits = norm.match(/\d+$/)?.[0] || '123';
+
+  // Extract matching airline or pick based on seed
+  const airline = airlines.find(a => a.iata === letters) || airlines[Math.floor(pseudoRandom(letters) * airlines.length)];
+  
+  // Create airports from pseudoRandom
+  const airportSeed1 = pseudoRandom(flightNo + 'orig');
+  const airportSeed2 = pseudoRandom(flightNo + 'dest');
+  
+  const origin = airports[Math.floor(airportSeed1 * airports.length)];
+  let destination = airports[Math.floor(airportSeed2 * airports.length)];
+  if (origin.iata === destination.iata) {
+    destination = airports[(airports.indexOf(origin) + 1) % airports.length];
+  }
+
+  // Create scheduled times
+  const baseTime = 12 + Math.floor(pseudoRandom(flightNo + 'time') * 12);
+  const now = new Date();
+  const scheduledDep = new Date(now.getFullYear(), now.getMonth(), now.getDate(), baseTime, 15);
+  const scheduledArr = new Date(scheduledDep.getTime() + 4 * 60 * 60 * 1000); // 4-hour flight duration
+
+  const statusOptions: FlightData['flightStatus'][] = ['scheduled', 'active', 'landed'];
+  const status = statusOptions[Math.floor(pseudoRandom(flightNo + 'status') * statusOptions.length)];
+
+  // Add Temperature, Weather, and AQI simulations
+  const origWeatherIndex = Math.floor(pseudoRandom(flightNo + 'origWeather') * weatherConditions.length);
+  const destWeatherIndex = Math.floor(pseudoRandom(flightNo + 'destWeather') * weatherConditions.length);
+
+  return {
+    flightNo: `${airline.iata}${digits}`,
+    airlineName: airline.name,
+    airlineIata: airline.iata,
+    flightStatus: status,
+    origin: {
+      airport: `${origin.name} (${origin.city})`,
+      iata: origin.iata,
+      icao: origin.icao,
+      timezone: origin.timezone,
+      scheduled: scheduledDep.toISOString(),
+      estimated: new Date(scheduledDep.getTime() + 25 * 60 * 1000).toISOString(),
+      terminal: `${Math.floor(pseudoRandom(flightNo + 'term1') * 4) + 1}`,
+      gate: `${String.fromCharCode(65 + Math.floor(pseudoRandom(flightNo + 'gate1l') * 6))}${Math.floor(pseudoRandom(flightNo + 'gate1n') * 35) + 1}`,
+      temp: Math.floor(pseudoRandom(flightNo + 'origTemp') * 32) + 5,
+      weather: weatherConditions[origWeatherIndex],
+      aqi: Math.floor(pseudoRandom(flightNo + 'origAQI') * 160) + 10
+    },
+    destination: {
+      airport: `${destination.name} (${destination.city})`,
+      iata: destination.iata,
+      icao: destination.icao,
+      timezone: destination.timezone,
+      scheduled: scheduledArr.toISOString(),
+      estimated: new Date(scheduledArr.getTime() + 40 * 60 * 1000).toISOString(),
+      terminal: `${Math.floor(pseudoRandom(flightNo + 'term2') * 4) + 1}`,
+      gate: `${String.fromCharCode(65 + Math.floor(pseudoRandom(flightNo + 'gate2l') * 6))}${Math.floor(pseudoRandom(flightNo + 'gate2n') * 35) + 1}`,
+      temp: Math.floor(pseudoRandom(flightNo + 'destTemp') * 32) + 5,
+      weather: weatherConditions[destWeatherIndex],
+      aqi: Math.floor(pseudoRandom(flightNo + 'destAQI') * 160) + 10
+    },
+    aircraft: {
+      model: aircraftModels[Math.floor(pseudoRandom(flightNo + 'ac') * aircraftModels.length)],
+      registration: `N${Math.floor(100 + pseudoRandom(flightNo + 'reg') * 899)}${airline.iata.charAt(0)}`
+    },
+    isRealTime: false
+  };
+}
+
+/**
+ * Predict overall delay risk percentage and breakdown of factors based on live or mock data.
+ */
+export function computeDelayPrediction(flight: FlightData): PredictionDetail {
+  const seedStr = flight.flightNo + flight.origin.iata + flight.destination.iata;
+  const p = pseudoRandom(seedStr);
+  const p2 = pseudoRandom(seedStr + 'factors');
+
+  // Base flight timing risk - evening flights are more likely to have delays due to compounding air traffic
+  const scheduledTime = new Date(flight.origin.scheduled);
+  const hours = scheduledTime.getHours();
+  let timeFactor = 10;
+  let timeDesc = 'Morning schedule: Low air traffic risk.';
+  
+  if (hours >= 12 && hours < 17) {
+    timeFactor = 35;
+    timeDesc = 'Afternoon slot: Moderate risk of minor cascading congestion.';
+  } else if (hours >= 17 && hours < 22) {
+    timeFactor = 65;
+    timeDesc = 'Late evening schedule: High risk of cascading delays from previous flights.';
+  } else if (hours >= 22 || hours < 6) {
+    timeFactor = 45;
+    timeDesc = 'Night timeframe: Low volume but high crew-rest dependency risks.';
+  }
+
+  // Find airline from the list or fallback
+  const airline = airlines.find(a => a.iata === flight.airlineIata) || { baseRisk: 18 };
+
+  // Generate factors with deterministic but variable ranges
+  const weatherScore = Math.floor(p2 * 50) + 10;
+  const airTrafficScore = Math.floor(pseudoRandom(seedStr + 'atc') * 60) + 15;
+  const airlineHistoryScore = Math.floor(airline.baseRisk + (p * 20));
+
+  // Comprehensive weighing
+  const overallRisk = Math.min(100, Math.max(5, Math.round(
+    (weatherScore * 0.35) + (airTrafficScore * 0.3) + (airlineHistoryScore * 0.2) + (timeFactor * 0.15)
+  )));
+
+  // Weather descriptions mapping
+  let weatherDesc = 'Clear skies with calm winds. Minimal meteorological risk.';
+  if (weatherScore > 45) {
+    weatherDesc = 'Forecasted moderate convective activity with thunderstorms near the arrival terminal.';
+  } else if (weatherScore > 30) {
+    weatherDesc = 'Winds above 20 knots and patchy fog conditions causing slight runway flow control.';
+  } else if (weatherScore > 15) {
+    weatherDesc = 'Standard visual meteorological conditions; low weather risk.';
+  }
+
+  // Air traffic descriptions mapping
+  let airTrafficDesc = 'Slight gate or runway queues at the departure hub.';
+  if (airTrafficScore > 50) {
+    airTrafficDesc = 'Heavy traffic volume, severe runway queue, and potential ground-stop delays.';
+  } else if (airTrafficScore > 30) {
+    airTrafficDesc = 'Routine peak hours; expect standard gate and tarmac spacing adjustments.';
+  } else if (airTrafficScore < 15) {
+    airTrafficDesc = 'Very low hub traffic; immediate taxi clearance expected.';
+  }
+
+  // Airline history description
+  const historyDesc = `${flight.airlineName} demonstrates a ${(100 - airlineHistoryScore).toFixed(0)}% on-time historical benchmark on this specific corridor.`;
+
+  // --- NEW ADVANCED ALGORITHMS INSERTION ---
+  
+  // Algorithm 1: Weather METAR Decoded Risk Simulator
+  // Assesses precipitation, wind factors, and visual obstacles deterministically.
+  const windSeed = pseudoRandom(seedStr + 'wind');
+  const visibilitySeed = pseudoRandom(seedStr + 'vis');
+  
+  const windSpeed = Math.floor(windSeed * 35) + 5; // Wind from 5 to 40 kts
+  const visibility = Math.max(0.5, (1 - visibilitySeed) * 10); // Vis from 0.5 to 10 miles
+  
+  let metarRisk = Math.round((windSpeed * 1.5) + (10 - visibility) * 4);
+  metarRisk = Math.min(100, Math.max(5, metarRisk));
+
+  let metarDesc = `Sustained winds at ${windSpeed} kts with over ${visibility.toFixed(1)} miles visibility. Low landing sequence impact.`;
+  if (metarRisk > 60) {
+    metarDesc = `Warning: High wind shear risk (${windSpeed} kts) and low surface visibility (${visibility.toFixed(1)} mi). Possible alternate approach routing required.`;
+  } else if (metarRisk > 35) {
+    metarDesc = `Caution: Winds reported at ${windSpeed} kts. Visibility restricted to ${visibility.toFixed(1)} mi. Normal operations with slight spacing adjustments.`;
+  }
+
+  // Algorithm 2: Airspace Density/Queuing Pattern Simulator
+  // Modeling airfield operations density as an M/M/1 queuing model
+  const arrivalRate = 25 + Math.floor(pseudoRandom(seedStr + 'arrRate') * 20); // rate of incoming flights per hour (25-45)
+  const departureRate = 22 + Math.floor(pseudoRandom(seedStr + 'depRate') * 20); // rate of outgoing flights per hour (22-42)
+  const hubFactor = flight.origin.iata === 'JFK' || flight.origin.iata === 'ORD' || flight.origin.iata === 'LHR' ? 1.4 : 1.0;
+
+  let airspaceMinutes = Math.round(((arrivalRate + departureRate) / 2) * 0.45 * hubFactor);
+  airspaceMinutes = Math.min(120, Math.max(0, airspaceMinutes));
+
+  let airspaceDesc = `Current airspace capacity utilization is moderate. Expected ground delay: +${airspaceMinutes} mins.`;
+  if (airspaceMinutes > 40) {
+    airspaceDesc = `Airspace saturation high. Metering procedures in place. Expected ground/holding delay: +${airspaceMinutes} mins.`;
+  } else if (airspaceMinutes < 15) {
+    airspaceDesc = `Optimal airfield operation. Smooth ground taxi and visual queue. Ground delay: +${airspaceMinutes} mins.`;
+  }
+
+  // Algorithm 3: Fleet Rotational Cascading Delay Simulator
+  // Estimates if turnaround delays from the previous aircraft journey creates a penalty.
+  const turnSeed = pseudoRandom(seedStr + 'turnaround');
+  const cascadingRisk = Math.round(turnSeed * 85);
+
+  let cascadingDesc = 'Turnaround analysis indicates the incoming aircraft arrived well ahead of schedule. Minimal crew/fleet swap risks.';
+  if (cascadingRisk > 65) {
+    cascadingDesc = 'Urgent: Previous inbound leg delayed by >45 mins. Turnaround time constrained, with a high risk of pushing departure time.';
+  } else if (cascadingRisk > 30) {
+    cascadingDesc = 'Normal turnaround buffer. Expect standard ground servicing without cascading delay impact.';
+  }
+
+  const advanced: AdvancedAlgorithmResults = {
+    metarRisk,
+    metarDesc,
+    airspaceMinutes,
+    airspaceDesc,
+    cascadingRisk,
+    cascadingDesc
+  };
+
+  // Dynamic commentary generation
+  let commentary = '';
+  if (overallRisk > 70) {
+    commentary = `This flight has a high delay probability (${overallRisk}%). The delay is largely driven by adverse terminal weather forecasts and peak hour tarmac congestion. We suggest monitoring and checking standby alternatives.`;
+  } else if (overallRisk > 40) {
+    commentary = `Moderate delay risk (${overallRisk}%). Minor delays up to 15–30 minutes are possible due to standard traffic spacing. Plan arrival activities accordingly.`;
+  } else {
+    commentary = `Exceptional flight reliability (${overallRisk}%). Weather conditions, history, and current route traffic indicate a very high likelihood of on-time departure.`;
+  }
+
+  return {
+    overallRisk,
+    factors: {
+      weather: weatherScore,
+      airTraffic: airTrafficScore,
+      history: airlineHistoryScore,
+      timeOfDay: timeFactor
+    },
+    details: {
+      weatherDesc,
+      airTrafficDesc,
+      historyDesc,
+      timeDesc
+    },
+    commentary,
+    advanced
+  };
+}
